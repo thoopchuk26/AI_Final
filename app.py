@@ -3,6 +3,7 @@ import copy
 import argparse
 import itertools
 from collections import deque
+import knn
 
 import cv2 as cv
 import numpy as np
@@ -35,6 +36,7 @@ def get_args():
 
 
 def main():
+    data = knn.Knn()
     # Argument parsing #################################################################
     args = get_args()
 
@@ -106,7 +108,6 @@ def main():
         image.flags.writeable = False
         results = hands.process(image)
         image.flags.writeable = True
-
         #  ####################################################################
         if results.multi_hand_landmarks is not None:
             for hand_landmarks, handedness in zip(results.multi_hand_landmarks,
@@ -120,7 +121,12 @@ def main():
                 pre_processed_landmark_list = pre_process_landmark(
                     landmark_list)
 
+                knnPrediction = data.predict([pre_processed_landmark_list[1:-1], pre_processed_landmark_list[1:-1]])[0]
                 # Write to the dataset file
+                #for i in pre_processed_landmark_list:
+                #    print(format(i,".5f"), end="|")
+                #knn.Knn(pre_processed_landmark_list)
+                print(pre_processed_landmark_list)
                 logging_csv(number, mode, pre_processed_landmark_list)
 
                 # Hand sign classification
@@ -134,6 +140,7 @@ def main():
                     brect,
                     handedness,
                     keypoint_classifier_labels[hand_sign_id],
+                    knnPrediction
                 )
 
         #debug_image = draw_point_history(debug_image, point_history)
@@ -364,13 +371,14 @@ def draw_bounding_rect(use_brect, image, brect):
     return image
 
 
-def draw_info_text(image, brect, handedness, hand_sign_text):
+def draw_info_text(image, brect, handedness, hand_sign_text, knn):
+    labels = ["Open", "Close", "Pointer", "OK", "Peace", "Rock", "Scissors", "Paper"]
     cv.rectangle(image, (brect[0], brect[1]), (brect[2], brect[1] - 22),
                  (0, 0, 0), -1)
 
     info_text = handedness.classification[0].label[0:]
     if hand_sign_text != "":
-        info_text = info_text + ':' + hand_sign_text
+        info_text = info_text + ':' + hand_sign_text + ', Knn: ' + str(labels[knn])
     cv.putText(image, info_text, (brect[0] + 5, brect[1] - 4),
                cv.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1, cv.LINE_AA)
     return image
